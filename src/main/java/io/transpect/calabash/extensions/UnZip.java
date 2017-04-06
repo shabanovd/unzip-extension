@@ -65,6 +65,9 @@ public class UnZip extends DefaultStep {
         if(!zipString.equals("")) {
             if(!pathString.equals("")) {
                 try {
+                    //workaround for xmldb:/
+                    pathString = createTempFolder().toString();
+
                     // main pipeline
                     if(pathString.charAt(pathString.length()-1)!=File.separatorChar){
                         pathString += File.separator;
@@ -85,6 +88,15 @@ public class UnZip extends DefaultStep {
         } else {
             result.write(createXMLError("The attribute zip must not be an empty string.", zipString, runtime));
         }
+    }
+
+    private static File createTempFolder() {
+        File tmpFolder = File.createTempFile("temp-file-name", ".tmp");
+
+        tmpFolder.delete();
+        tmpFolder.mkdirs();
+
+        return tmpFolder;
     }
     private static void createDirectory(String directory, boolean overwrite) throws IOException{
         Path path = Paths.get(directory).toAbsolutePath();
@@ -111,7 +123,15 @@ public class UnZip extends DefaultStep {
     }
     // create an ArrayList which contains the filenames
     private static ArrayList<String> unzip(String zip, String file, String outputDirectory) throws IOException {
-        final ZipFile zipFile = new ZipFile( zip );
+
+        //workaround for xmldb:/
+        File tmpZip = File.createTempFile("temp-file-name", ".zip");
+        URL zipUrl = new URL(zip);
+        try (InputStream stream = zipUrl.openStream()) {
+            Files.copy(stream, tmpZip.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        final ZipFile zipFile = new ZipFile( tmpZip );
         ArrayList<String> fileList = new ArrayList<String>();
         try {
             final Enumeration<? extends ZipEntry> zipEntries = zipFile.entries();
